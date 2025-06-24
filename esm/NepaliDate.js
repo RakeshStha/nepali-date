@@ -1,0 +1,224 @@
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+import { START_YEAR, NEPALI_DATE_MAP, EPOCH } from './config';
+import _format from './format';
+
+var SUM_IDX = 14;
+
+function _parse(dateString) {
+  // Expected date formats are yyyy-mm-dd, yyyy.mm.dd yyyy/mm/dd
+  var parts = dateString.split(/[-./]/, 3);
+
+  var _parts$map = parts.map(function (d) {
+    var n = parseInt(d, 10);
+    if (Number.isNaN(n)) {
+      throw new Error('Invalid date');
+    }
+    return n;
+  }),
+      _parts$map2 = _slicedToArray(_parts$map, 3),
+      year = _parts$map2[0],
+      _parts$map2$ = _parts$map2[1],
+      month = _parts$map2$ === undefined ? 1 : _parts$map2$,
+      _parts$map2$2 = _parts$map2[2],
+      day = _parts$map2$2 === undefined ? 1 : _parts$map2$2;
+
+  // Make sure we are within range
+
+
+  if (year < START_YEAR || year >= START_YEAR + NEPALI_DATE_MAP.length) {
+    throw new Error('Nepal year out of range');
+  }
+
+  if (month < 1 || month > 12) {
+    throw new Error('Invalid nepali month must be between 1 - 12');
+  }
+
+  var daysInMonth = NEPALI_DATE_MAP[year - START_YEAR][month];
+  if (day < 1 || day > daysInMonth) {
+    throw new Error('Invalid nepali date must be between 1 - ' + daysInMonth + ' in ' + year + ' ' + month);
+  }
+
+  return [year, month - 1, day];
+}
+
+var NepaliDate = function () {
+  function NepaliDate() {
+    _classCallCheck(this, NepaliDate);
+
+    if (arguments.length === 0) {
+      this.setEnglishDate(new Date());
+    } else if (arguments.length === 1) {
+      var e = arguments.length <= 0 ? undefined : arguments[0];
+      if ((typeof e === 'undefined' ? 'undefined' : _typeof(e)) === 'object') {
+        if (e instanceof Date) {
+          this.setEnglishDate(e);
+        } else if (e instanceof NepaliDate) {
+          this.timestamp = e.timestamp;
+          this.year = e.year;
+          this.month = e.month;
+          this.day = e.day;
+        } else if (typeof e === 'number') {
+          this.setEnglishDate(new Date(e));
+        } else {
+          throw new Error('Invalid date argument');
+        }
+      } else if (typeof e === 'string') {
+        // Try to parse the date
+        this.set.apply(this, _toConsumableArray(_parse(e)));
+      } else {
+        throw new Error('Invalid date argument');
+      }
+    } else if (arguments.length === 3) {
+      this.set(arguments.length <= 0 ? undefined : arguments[0], arguments.length <= 1 ? undefined : arguments[1], arguments.length <= 2 ? undefined : arguments[2]);
+    } else {
+      throw new Error('Invalid argument syntax');
+    }
+  }
+
+  _createClass(NepaliDate, [{
+    key: 'setEnglishDate',
+    value: function setEnglishDate(date) {
+      this.timestamp = date;
+      var daysCount = Math.floor((this.timestamp - EPOCH) / 86400000);
+      // Look for a index based on number of days since epoch.
+      // it is just to save some iterations searching from idx 0.
+      // So dividing by a number slightly higher than number of days in a year (365.25)
+      var idx = Math.floor(daysCount / 366);
+      while (daysCount >= NEPALI_DATE_MAP[idx][SUM_IDX]) {
+        idx += 1;
+      }
+
+      daysCount -= NEPALI_DATE_MAP[idx - 1][SUM_IDX];
+      var tmp = NEPALI_DATE_MAP[idx];
+
+      // eslint-disable-next-line prefer-destructuring
+      this.year = tmp[0];
+
+      // Month starts at 0, check for remaining days left
+      this.month = 0;
+      while (daysCount >= tmp[this.month + 1]) {
+        this.month += 1;
+        daysCount -= tmp[this.month];
+      }
+
+      // The day of month is the remaining days + 1
+      this.day = daysCount + 1;
+    }
+  }, {
+    key: 'getEnglishDate',
+    value: function getEnglishDate() {
+      return this.timestamp;
+    }
+  }, {
+    key: 'parse',
+    value: function parse(dateString) {
+      this.set.apply(this, _toConsumableArray(_parse(dateString)));
+    }
+  }, {
+    key: 'getYear',
+    value: function getYear() {
+      return this.year;
+    }
+  }, {
+    key: 'getMonth',
+    value: function getMonth() {
+      return this.month;
+    }
+  }, {
+    key: 'getDate',
+    value: function getDate() {
+      return this.day;
+    }
+  }, {
+    key: 'getDay',
+    value: function getDay() {
+      return this.timestamp.getDay();
+    }
+  }, {
+    key: 'getHours',
+    value: function getHours() {
+      return this.timestamp.getHours();
+    }
+  }, {
+    key: 'getMinutes',
+    value: function getMinutes() {
+      return this.timestamp.getMinutes();
+    }
+  }, {
+    key: 'getSeconds',
+    value: function getSeconds() {
+      return this.timestamp.getSeconds();
+    }
+  }, {
+    key: 'getMilliseconds',
+    value: function getMilliseconds() {
+      return this.timestamp.getMilliseconds();
+    }
+  }, {
+    key: 'getTime',
+    value: function getTime() {
+      return this.timestamp.getTime();
+    }
+  }, {
+    key: 'setYear',
+    value: function setYear(year) {
+      this.set(year, this.month, this.day);
+    }
+  }, {
+    key: 'setMonth',
+    value: function setMonth(month) {
+      this.set(this.year, month, this.day);
+    }
+  }, {
+    key: 'setDate',
+    value: function setDate(day) {
+      this.set(this.year, this.month, day);
+    }
+  }, {
+    key: 'set',
+    value: function set(year, month, date) {
+      var idx = year + Math.floor(month / 12) - START_YEAR;
+      var tmp = NEPALI_DATE_MAP[idx];
+      var d = tmp[SUM_IDX] - tmp[SUM_IDX - 1];
+
+      var m = month % 12;
+      var mm = m < 0 ? 12 + m : m;
+
+      for (var i = 0; i < mm; i += 1) {
+        d += tmp[i + 1];
+      }
+      d += date - 1;
+      this.setEnglishDate(new Date(EPOCH + d * 86400000));
+    }
+  }, {
+    key: 'format',
+    value: function format(formatStr) {
+      return _format(this, formatStr);
+    }
+  }, {
+    key: 'toString',
+    value: function toString() {
+      return this.year + '/' + (this.month + 1) + '/' + this.day;
+    }
+  }]);
+
+  return NepaliDate;
+}();
+
+NepaliDate.minimum = function () {
+  return new Date(EPOCH);
+};
+NepaliDate.maximum = function () {
+  return new Date(EPOCH + NEPALI_DATE_MAP[NEPALI_DATE_MAP.length - 1][SUM_IDX] * 86400000);
+};
+
+export default NepaliDate;
